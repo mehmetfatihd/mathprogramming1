@@ -1,0 +1,88 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\begin{document}
+
+\section*{Mixed Integer Linear Programming Formulation for Job Scheduling}
+
+The problem involves scheduling a set of $n=8$ jobs $J = \{1, 2, 3, 4, 5, 6, 7, 8\}$ on a set of $m=4$ machines $I = \{A, B, C, D\}$. Each job $j \in J$ must be processed on all machines in a specific order $(M_{j1}, M_{j2}, M_{j3}, M_{j4})$, where processing job $j$ on machine $h$ takes $p_{jh}$ time units. Each machine can process only one job at a time, and once a job starts processing on a machine, it must complete before another job can start. The objective is to minimize the sum of job completion times, i.e., the times when each job finishes processing on its last machine $M_{j4}$.
+
+\subsection*{Sets and Parameters}
+\begin{itemize}
+    \item $J = \{1, 2, 3, 4, 5, 6, 7, 8\}$: Set of jobs.
+    \item $I = \{A, B, C, D\}$: Set of machines.
+    \item $p_{jh}$: Processing time of job $j \in J$ on machine $h \in I$ (from Table 1).
+    \item $M_{jk}$: The $k$-th machine (where $k = 1, 2, 3, 4$) in the processing order of job $j$ (from Table 2).
+    \item $M$: A sufficiently large constant (e.g., sum of all processing times).
+\end{itemize}
+
+\subsection*{Decision Variables}
+\begin{itemize}
+    \item $S_{jh} \geq 0$: Start time of job $j \in J$ on machine $h \in I$ (continuous).
+    \item $C_j \geq 0$: Completion time of job $j \in J$, i.e., the time when job $j$ finishes processing on its last machine $M_{j4}$ (continuous).
+    \item $X_{jj'h} \in \{0, 1\}$: Binary variable indicating whether job $j \in J$ is processed before job $j' \in J$ (where $j \neq j'$) on machine $h \in I$.
+        \begin{itemize}
+            \item $X_{jj'h} = 1$ if job $j$ precedes job $j'$ on machine $h$.
+            \item $X_{jj'h} = 0$ otherwise.
+        \end{itemize}
+\end{itemize}
+
+\subsection*{Objective Function}
+Minimize the sum of the completion times of all jobs:
+\begin{equation}
+\text{Minimize} \quad \sum_{j \in J} C_j
+\end{equation}
+
+\subsection*{Constraints}
+\begin{enumerate}
+    \item \textbf{Completion Time Constraint}: The completion time of job $j$ must be at least the time when it finishes processing on its last machine $M_{j4}$:
+    \begin{equation}
+    C_j \geq S_{j, M_{j4}} + p_{j, M_{j4}}, \quad \forall j \in J
+    \end{equation}
+
+    \item \textbf{Machine Order Constraint}: For each job $j$, the start time on machine $M_{j,k+1}$ must be at least the completion time on the previous machine $M_{j,k}$:
+    \begin{equation}
+    S_{j, M_{j,k+1}} \geq S_{j, M_{j,k}} + p_{j, M_{j,k}}, \quad \forall j \in J, \quad k = 1, 2, 3
+    \end{equation}
+
+    \item \textbf{Machine Conflict Constraint}: For each machine $h$, jobs $j$ and $j'$ (where $j \neq j'$) cannot be processed simultaneously. Either job $j$ precedes job $j'$, or job $j'$ precedes job $j$:
+    \begin{equation}
+    S_{j'h} \geq S_{jh} + p_{jh} - M (1 - X_{jj'h}), \quad \forall j, j' \in J, j \neq j', \forall h \in I
+    \end{equation}
+    \begin{equation}
+    S_{jh} \geq S_{j'h} + p_{j'h} - M X_{jj'h}, \quad \forall j, j' \in J, j \neq j', \forall h \in I
+    \end{equation}
+
+    \item \textbf{Non-negativity and Binary Constraints}:
+    \begin{equation}
+    S_{jh} \geq 0, \quad \forall j \in J, \forall h \in I
+    \end{equation}
+    \begin{equation}
+    C_j \geq 0, \quad \forall j \in J
+    \end{equation}
+    \begin{equation}
+    X_{jj'h} \in \{0, 1\}, \quad \forall j, j' \in J, j \neq j', \forall h \in I
+    \end{equation}
+\end{enumerate}
+
+\subsection*{Optimal Solution}
+The problem was solved using Gurobi Optimizer (version 12.0.1). The optimal objective value, i.e., the minimum sum of completion times, is:
+\[
+\sum_{j \in J} C_j = 539
+\]
+The completion times for each job are:
+\begin{itemize}
+    \item Job 1: $C_1 = 62$
+    \item Job 2: $C_2 = 42$
+    \item Job 3: $C_3 = 89$
+    \item Job 4: $C_4 = 62$
+    \item Job 5: $C_5 = 48$
+    \item Job 6: $C_6 = 28$
+    \item Job 7: $C_7 = 115$
+    \item Job 8: $C_8 = 93$
+\end{itemize}
+
+\end{document}
