@@ -38,15 +38,71 @@ def build_model(model: gp.Model, processing_times: np.ndarray, machine_sequences
     # note that both jobs and machines are 0-indexed here
     n_jobs, n_machines = processing_times.shape
 
-    # put your model building code here
-    #
-    # x = model.addVars(...)
-    #
-    # if you want to access your variables outside this function, you can use
-    # model._x = x
-    # to save a reference in the model itself
-    #
-    # model.addConstrs(...)
+    big_M = np.sum(processing_times)
+
+    # --- Decision Variables ---
+    S = model.addVars(n_jobs, n_machines, vtype=GRB.CONTINUOUS, name="S", lb=0.0)
+
+    C = model.addVars(n_jobs, vtype=GRB.CONTINUOUS, name="C", lb=0.0)
+    x = model.addVars(
+        (
+            (i, j, h)
+            for i in range(n_jobs)
+            for j in range(i + 1, n_jobs)
+            for h in range(n_machines)
+        ),
+        vtype=GRB.BINARY,
+        name="x",
+    )
+
+    model._S = S
+    model._C = C
+    model._x = x
+
+
+    model.setObjective(gp.quicksum(C[j] for j in range(n_jobs)), GRB.MINIMIZE)
+
+    # --- Constraints ---
+
+    for j in range(n_jobs):
+        for k in range(n_machines - 1):
+            current_machine = machine_sequences[j, k]
+            next_machine = machine_sequences[j, k + 1]
+            proc_time_current = processing_times[j, current_machine]
+
+            model.addConstr(
+                S[j, next_machine] >= S[j, current_machine] + proc_time_current,
+                name=f"prec_{j}_{k}" 
+            )
+
+    for h in range(n_machines):
+        for i in range(n_jobs):
+            for j in range(i + 1, n_jobs): 
+            
+                proc_time_i = processing_times[i, h]
+
+                proc_time_j = processing_times[j, h]
+
+
+                model.addConstr(
+                    S[j, h] >= S[i, h] + proc_time_i - big_M * (1 - x[i, j, h]),
+                    name=f"disj1_{i}_{j}_{h}" 
+                )
+
+                model.addConstr(
+                    S[i, h] >= S[j, h] + proc_time_j - big_M * x[i, j, h],
+                     name=f"disj2_{i}_{j}_{h}"
+                )
+
+
+    for j in range(n_jobs):
+        last_machine = machine_sequences[j, n_machines - 1]
+        proc_time_last = processing_times[j, last_machine]
+
+        model.addConstr(
+            C[j] >= S[j, last_machine] + proc_time_last,
+             name=f"completion_{j}"
+        )
 
 
 if __name__ == "__main__":
